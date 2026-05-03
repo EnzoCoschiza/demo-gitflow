@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitFlow — Ingeniería de Software</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Fraunces:ital,wght@0,300;0,700;0,900;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e2d45;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --purple: #c084fc;
+    --orange: #fb923c;
+
+    /* Branch colors */
+    --c-main: #f87171;
+    --c-develop: #818cf8;
+    --c-feature: #4ade80;
+    --c-release: #fbbf24;
+    --c-hotfix: #fb923c;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ===== SLIDES ===== */
+  .slide {
+    display: none;
+    position: absolute;
+    inset: 0;
+    padding: 48px 64px;
+    animation: fadeIn 0.4s ease;
+  }
+  .slide.active { display: flex; flex-direction: column; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ===== NAV ===== */
+  #nav {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(17,24,39,0.92);
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    padding: 10px 24px;
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+  #nav button {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+  #nav button:hover { background: var(--surface2); border-color: var(--accent); color: var(--accent); }
+  #slide-counter { font-size: 11px; color: var(--muted); min-width: 60px; text-align: center; }
+  #progress-bar {
+    position: fixed; top: 0; left: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.4s ease; z-index: 200;
+  }
+
+  /* ===== TYPOGRAPHY ===== */
+  .slide-tag {
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+  }
+  .slide-tag::before { content: ''; display: block; width: 24px; height: 1px; background: var(--accent); }
+  h1 { font-family: 'Fraunces', serif; font-size: clamp(2.4rem, 5vw, 4rem); font-weight: 900; line-height: 1.05; }
+  h2 { font-family: 'Fraunces', serif; font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 700; line-height: 1.1; margin-bottom: 24px; }
+  h3 { font-size: 13px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  p { font-size: 14px; line-height: 1.8; color: var(--muted); max-width: 700px; }
+  .big-text { font-size: clamp(1rem, 2vw, 1.25rem); color: var(--text); line-height: 1.7; max-width: 750px; }
+
+  /* ===== GRID LAYOUTS ===== */
+  .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; flex: 1; }
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; flex: 1; }
+
+  /* ===== CARDS ===== */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .card-accent { border-color: var(--accent); }
+
+  /* ===== BRANCH PILL ===== */
+  .branch-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 4px 12px; border-radius: 20px; font-size: 12px;
+    font-weight: 600; margin-bottom: 8px;
+  }
+  .branch-pill::before { content: '⬤'; font-size: 8px; }
+
+  /* ===== CODE BLOCK ===== */
+  .code-block {
+    background: #050810;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    font-size: 13px;
+    line-height: 1.9;
+    overflow-y: auto;
+  }
+  .code-block .cmd { color: var(--accent); }
+  .code-block .cmt { color: var(--muted); }
+  .code-block .ok  { color: var(--green); }
+  .code-block .warn { color: var(--yellow); }
+  .code-block .br  { color: var(--purple); }
+
+  /* ===== TERMINAL ===== */
+  .terminal {
+    background: #050810;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    flex: 1;
+  }
+  .terminal-bar {
+    background: var(--surface2);
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-r { background: #f87171; }
+  .dot-y { background: #fbbf24; }
+  .dot-g { background: #4ade80; }
+  .terminal-title { font-size: 11px; color: var(--muted); margin-left: 8px; }
+  .terminal-body { padding: 20px 24px; font-size: 12px; line-height: 2; overflow-y: auto; max-height: calc(100% - 40px); }
+  .t-prompt { color: var(--green); }
+  .t-branch { color: var(--purple); }
+  .t-cmd { color: var(--text); }
+  .t-out { color: var(--muted); }
+  .t-ok { color: var(--green); }
+  .t-step { color: var(--accent); font-weight: 600; }
+
+  /* ===== DAG SVG ===== */
+  .dag-container { flex: 1; display: flex; align-items: center; justify-content: center; }
+  svg text { font-family: 'JetBrains Mono', monospace; }
+
+  /* ===== PROS/CONS ===== */
+  .pro, .con {
+    font-size: 13px; padding: 10px 14px; border-radius: 8px; margin-bottom: 8px;
+    display: flex; align-items: flex-start; gap: 10px; line-height: 1.5;
+  }
+  .pro { background: rgba(74,222,128,0.07); border-left: 3px solid var(--green); }
+  .con { background: rgba(248,113,113,0.07); border-left: 3px solid var(--red); }
+  .pro::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
+  .con::before { content: '✗'; color: var(--red); font-weight: 700; flex-shrink: 0; }
+
+  /* ===== STEP LIST ===== */
+  .step-list { list-style: none; }
+  .step-list li {
+    display: flex; gap: 16px; align-items: flex-start;
+    padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .step-num {
+    min-width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+  }
+  .step-list li span { color: var(--muted); }
+
+  /* ===== TITLE SLIDE ===== */
+  #slide-1 { justify-content: center; }
+  .title-eyebrow {
+    font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 24px;
+  }
+  .title-sub { font-size: 14px; color: var(--muted); margin-top: 16px; max-width: 500px; line-height: 1.7; }
+  .title-meta { margin-top: 48px; font-size: 11px; color: var(--muted); letter-spacing: 0.1em; }
+  .grid-bg {
+    position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: -1;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px),
+                      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+    opacity: 0.4;
+  }
+  .glow {
+    position: absolute; width: 600px; height: 600px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(56,189,248,0.06) 0%, transparent 70%);
+    pointer-events: none; z-index: -1; left: -100px; top: -100px;
+  }
+
+  /* Scroll hint */
+  .scroll-hint { font-size: 11px; color: var(--muted); text-align: center; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<!-- ============================================================ SLIDE 1: TITLE -->
+<div class="slide active" id="slide-1">
+  <div class="grid-bg"></div>
+  <div class="glow"></div>
+  <div class="title-eyebrow">Ingeniería en Sistemas · Control de Versiones</div>
+  <h1>Git<span style="color:var(--accent)">Flow</span></h1>
+  <p class="title-sub">Un modelo de ramificación para equipos que trabajan con ciclos de release estructurados. Desde el concepto hasta la práctica.</p>
+  <div style="margin-top:32px; display:flex; gap:12px; flex-wrap:wrap;">
+    <span class="branch-pill" style="background:rgba(248,113,113,0.12);color:var(--c-main)">main</span>
+    <span class="branch-pill" style="background:rgba(129,140,248,0.12);color:var(--c-develop)">develop</span>
+    <span class="branch-pill" style="background:rgba(74,222,128,0.12);color:var(--c-feature)">feature/*</span>
+    <span class="branch-pill" style="background:rgba(251,191,36,0.12);color:var(--c-release)">release/*</span>
+    <span class="branch-pill" style="background:rgba(251,146,60,0.12);color:var(--c-hotfix)">hotfix/*</span>
+  </div>
+  <div class="title-meta">Presentación interactiva · Usar ← → o botones para navegar</div>
+</div>
+
+<!-- ============================================================ SLIDE 2: ¿QUÉ ES? -->
+<div class="slide" id="slide-2">
+  <div class="slide-tag">Introducción</div>
+  <h2>¿Qué es GitFlow?</h2>
+  <div class="cols-2" style="align-items:start; gap:40px;">
+    <div>
+      <p class="big-text">GitFlow es un <strong style="color:var(--accent)">modelo de ramificación</strong> (branching model) para Git, propuesto por <strong style="color:var(--text)">Vincent Driessen</strong> en 2010.</p>
+      <br>
+      <p>Define un conjunto estricto de reglas sobre <strong style="color:var(--text)">cómo y cuándo crear ramas</strong>, qué se fusiona con qué, y cuándo se puede hacer un release. Es especialmente útil en proyectos con <strong style="color:var(--text)">versiones planificadas</strong> y equipos medianos o grandes.</p>
+      <br>
+      <div class="card" style="margin-top:8px;">
+        <h3>No es una herramienta</h3>
+        <p>GitFlow es una <strong style="color:var(--text)">convención</strong>. Se puede seguir con comandos git puros o con herramientas como <code style="color:var(--accent)">git-flow</code> (extensión CLI).</p>
+      </div>
+    </div>
+    <div class="card card-accent">
+      <h3>El problema que resuelve</h3>
+      <div class="step-list">
+        <li><div class="step-num">1</div><div><strong>Caos en el historial</strong><br><span>Sin convención, todos hacen push a main y el historial es ilegible.</span></div></li>
+        <li><div class="step-num">2</div><div><strong>Releases accidentales</strong><br><span>Código incompleto llega a producción porque no hay separación.</span></div></li>
+        <li><div class="step-num">3</div><div><strong>Hotfixes complejos</strong><br><span>Un bug urgente en producción se complica por features a medio terminar.</span></div></li>
+        <li><div class="step-num" style="background:var(--green)">✓</div><div><strong>GitFlow da estructura</strong><br><span>Cada tipo de trabajo tiene su rama, su ciclo de vida y su destino.</span></div></li>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ SLIDE 3: RAMAS PRINCIPALES -->
+<div class="slide" id="slide-3">
+  <div class="slide-tag">Arquitectura</div>
+  <h2>Las 5 ramas de GitFlow</h2>
+  <div class="cols-3" style="gap:16px;">
+    <div class="card" style="border-color:var(--c-main);">
+      <div class="branch-pill" style="background:rgba(248,113,113,0.12);color:var(--c-main)">main</div>
+      <p style="font-size:13px; margin-top:8px;">Código en <strong style="color:var(--text)">producción</strong>. Solo recibe merges de <code style="color:var(--yellow)">release/*</code> y <code style="color:var(--orange)">hotfix/*</code>. Cada commit en main es un release oficial. Se <strong style="color:var(--text)">tagea</strong> con la versión.</p>
+    </div>
+    <div class="card" style="border-color:var(--c-develop);">
+      <div class="branch-pill" style="background:rgba(129,140,248,0.12);color:var(--c-develop)">develop</div>
+      <p style="font-size:13px; margin-top:8px;">La rama de <strong style="color:var(--text)">integración</strong>. Aquí confluyen todos los features terminados. Es el "próximo release". Se bifurca desde main inicialmente y vive para siempre.</p>
+    </div>
+    <div class="card" style="border-color:var(--c-feature);">
+      <div class="branch-pill" style="background:rgba(74,222,128,0.12);color:var(--c-feature)">feature/*</div>
+      <p style="font-size:13px; margin-top:8px;">Una rama por cada nueva funcionalidad. Sale de <code style="color:var(--c-develop)">develop</code> y vuelve a <code style="color:var(--c-develop)">develop</code>. Nombre: <code>feature/login</code>, <code>feature/pagos</code>, etc.</p>
+    </div>
+    <div class="card" style="border-color:var(--c-release);">
+      <div class="branch-pill" style="background:rgba(251,191,36,0.12);color:var(--c-release)">release/*</div>
+      <p style="font-size:13px; margin-top:8px;">Preparación de un release. Sale de <code style="color:var(--c-develop)">develop</code>, se hacen ajustes finales, y se mergea a <code style="color:var(--c-main)">main</code> <em>y</em> <code style="color:var(--c-develop)">develop</code>. Nombre: <code>release/1.2</code></p>
+    </div>
+    <div class="card" style="border-color:var(--c-hotfix);">
+      <div class="branch-pill" style="background:rgba(251,146,60,0.12);color:var(--c-hotfix)">hotfix/*</div>
+      <p style="font-size:13px; margin-top:8px;">Corrección <strong style="color:var(--text)">urgente</strong> en producción. Sale directo de <code style="color:var(--c-main)">main</code> y se mergea a <code style="color:var(--c-main)">main</code> <em>y</em> <code style="color:var(--c-develop)">develop</code>. Nombre: <code>hotfix/crash-login</code></p>
+    </div>
+    <div class="card" style="background: rgba(56,189,248,0.04); border-style: dashed;">
+      <h3>Regla de oro</h3>
+      <p style="font-size:13px; margin-top:8px;"><strong style="color:var(--text)">Nunca</strong> hacer commits directamente en <code style="color:var(--c-main)">main</code>.<br><br>Solo llegan merges controlados desde <code style="color:var(--c-release)">release</code> o <code style="color:var(--c-hotfix)">hotfix</code>.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ SLIDE 4: DAG COMPLETO -->
+<div class="slide" id="slide-4">
+  <div class="slide-tag">Grafo Acíclico Dirigido</div>
+  <h2>DAG completo de GitFlow</h2>
+  <div class="dag-container">
+    <svg viewBox="0 0 900 420" width="100%" height="100%" style="max-height:340px;">
+      <defs>
+        <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#64748b"/>
+        </marker>
+        <marker id="arr-g" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="var(--c-feature)"/>
+        </marker>
+        <marker id="arr-y" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="var(--c-release)"/>
+        </marker>
+        <marker id="arr-o" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="var(--c-hotfix)"/>
+        </marker>
+      </defs>
+
+      <!-- Labels de ramas -->
+      <text x="30" y="50"  fill="var(--c-main)"    font-size="10" font-weight="700">main</text>
+      <text x="30" y="130" fill="var(--c-hotfix)"  font-size="10" font-weight="700">hotfix</text>
+      <text x="30" y="210" fill="var(--c-release)" font-size="10" font-weight="700">release</text>
+      <text x="30" y="290" fill="var(--c-develop)" font-size="10" font-weight="700">develop</text>
+      <text x="30" y="370" fill="var(--c-feature)" font-size="10" font-weight="700">feature</text>
+
+      <!-- Líneas de carril -->
+      <line x1="90" y1="42"  x2="870" y2="42"  stroke="var(--c-main)"    stroke-width="1" stroke-dasharray="4,4" opacity="0.2"/>
+      <line x1="90" y1="122" x2="870" y2="122" stroke="var(--c-hotfix)"  stroke-width="1" stroke-dasharray="4,4" opacity="0.2"/>
+      <line x1="90" y1="202" x2="870" y2="202" stroke="var(--c-release)" stroke-width="1" stroke-dasharray="4,4" opacity="0.2"/>
+      <line x1="90" y1="282" x2="870" y2="282" stroke="var(--c-develop)" stroke-width="1" stroke-dasharray="4,4" opacity="0.2"/>
+      <line x1="90" y1="362" x2="870" y2="362" stroke="var(--c-feature)" stroke-width="1" stroke-dasharray="4,4" opacity="0.2"/>
+
+      <!-- ========= COMMITS MAIN ========= -->
+      <!-- M1 inicio -->
+      <circle cx="110" cy="42" r="8" fill="var(--c-main)" opacity="0.9"/>
+      <text x="106" y="30" fill="var(--text)" font-size="8">v0.1</text>
+      <!-- M2 merge release -->
+      <circle cx="570" cy="42" r="8" fill="var(--c-main)" opacity="0.9"/>
+      <text x="558" y="30" fill="var(--text)" font-size="8">v1.0</text>
+      <!-- M3 merge hotfix -->
+      <circle cx="760" cy="42" r="8" fill="var(--c-main)" opacity="0.9"/>
+      <text x="748" y="30" fill="var(--text)" font-size="8">v1.0.1</text>
+
+      <!-- Línea main -->
+      <line x1="118" y1="42" x2="562" y2="42" stroke="var(--c-main)" stroke-width="2.5" marker-end="url(#arr)"/>
+      <line x1="578" y1="42" x2="752" y2="42" stroke="var(--c-main)" stroke-width="2.5" marker-end="url(#arr)"/>
+      <line x1="768" y1="42" x2="870" y2="42" stroke="var(--c-main)" stroke-width="2.5" marker-end="url(#arr)"/>
+
+      <!-- ========= HOTFIX ========= -->
+      <!-- Sale de M2 -->
+      <circle cx="620" cy="122" r="7" fill="var(--c-hotfix)" opacity="0.9"/>
+      <circle cx="700" cy="122" r="7" fill="var(--c-hotfix)" opacity="0.9"/>
+
+      <!-- Bifurca de main -->
+      <line x1="570" y1="50" x2="613" y2="115" stroke="var(--c-hotfix)" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.7"/>
+      <!-- Linea hotfix -->
+      <line x1="627" y1="122" x2="693" y2="122" stroke="var(--c-hotfix)" stroke-width="2" marker-end="url(#arr)"/>
+      <!-- Merge a main -->
+      <line x1="704" y1="115" x2="754" y2="50" stroke="var(--c-hotfix)" stroke-width="1.5" marker-end="url(#arr-o)" opacity="0.9"/>
+      <!-- Merge a develop -->
+      <line x1="700" y1="129" x2="760" y2="276" stroke="var(--c-hotfix)" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arr-o)" opacity="0.7"/>
+
+      <!-- ========= DEVELOP ========= -->
+      <!-- D1 bifurca de main -->
+      <circle cx="160" cy="282" r="7" fill="var(--c-develop)" opacity="0.9"/>
+      <!-- D commits -->
+      <circle cx="280" cy="282" r="7" fill="var(--c-develop)" opacity="0.9"/>
+      <circle cx="420" cy="282" r="7" fill="var(--c-develop)" opacity="0.9"/>
+      <!-- D merge release back -->
+      <circle cx="540" cy="282" r="7" fill="var(--c-develop)" opacity="0.9"/>
+      <circle cx="650" cy="282" r="7" fill="var(--c-develop)" opacity="0.9"/>
+      <circle cx="780" cy="282" r="7" fill="var(--c-develop)" opacity="0.9"/>
+
+      <!-- Bifurca de main -->
+      <line x1="118" y1="48" x2="154" y2="276" stroke="var(--c-develop)" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.7"/>
+      <!-- Línea develop -->
+      <line x1="167" y1="282" x2="273" y2="282" stroke="var(--c-develop)" stroke-width="2.5" marker-end="url(#arr)"/>
+      <line x1="287" y1="282" x2="413" y2="282" stroke="var(--c-develop)" stroke-width="2.5" marker-end="url(#arr)"/>
+      <line x1="427" y1="282" x2="533" y2="282" stroke="var(--c-develop)" stroke-width="2.5" marker-end="url(#arr)"/>
+      <line x1="547" y1="282" x2="643" y2="282" stroke="var(--c-develop)" stroke-width="2.5" marker-end="url(#arr)"/>
+      <line x1="657" y1="282" x2="773" y2="282" stroke="var(--c-develop)" stroke-width="2.5" marker-end="url(#arr)"/>
+      <line x1="787" y1="282" x2="870" y2="282" stroke="var(--c-develop)" stroke-width="2.5" marker-end="url(#arr)"/>
+
+      <!-- ========= RELEASE ========= -->
+      <!-- Bifurca de develop D3 -->
+      <circle cx="460" cy="202" r="7" fill="var(--c-release)" opacity="0.9"/>
+      <circle cx="530" cy="202" r="7" fill="var(--c-release)" opacity="0.9"/>
+
+      <!-- Bifurca de develop -->
+      <line x1="420" y1="275" x2="453" y2="209" stroke="var(--c-release)" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.7"/>
+      <!-- Línea release -->
+      <line x1="467" y1="202" x2="523" y2="202" stroke="var(--c-release)" stroke-width="2" marker-end="url(#arr)"/>
+      <!-- Merge a main -->
+      <line x1="534" y1="195" x2="563" y2="50" stroke="var(--c-release)" stroke-width="1.5" marker-end="url(#arr-y)" opacity="0.9"/>
+      <!-- Merge a develop -->
+      <line x1="534" y1="209" x2="540" y2="276" stroke="var(--c-release)" stroke-width="1.5" marker-end="url(#arr-y)" opacity="0.7"/>
+
+      <!-- ========= FEATURE ========= -->
+      <!-- Feature A -->
+      <circle cx="200" cy="362" r="7" fill="var(--c-feature)" opacity="0.9"/>
+      <circle cx="270" cy="362" r="7" fill="var(--c-feature)" opacity="0.9"/>
+
+      <!-- Bifurca de D1 -->
+      <line x1="168" y1="276" x2="194" y2="356" stroke="var(--c-feature)" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.7"/>
+      <!-- Línea feature A -->
+      <line x1="207" y1="362" x2="263" y2="362" stroke="var(--c-feature)" stroke-width="2" marker-end="url(#arr)"/>
+      <!-- Merge a develop -->
+      <line x1="270" y1="355" x2="280" y2="289" stroke="var(--c-feature)" stroke-width="1.5" marker-end="url(#arr-g)" opacity="0.9"/>
+
+      <!-- Feature B -->
+      <circle cx="340" cy="362" r="7" fill="var(--c-feature)" opacity="0.9"/>
+      <circle cx="390" cy="362" r="7" fill="var(--c-feature)" opacity="0.9"/>
+
+      <!-- Bifurca de D2 -->
+      <line x1="286" y1="276" x2="334" y2="356" stroke="var(--c-feature)" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.7"/>
+      <!-- Línea feature B -->
+      <line x1="347" y1="362" x2="383" y2="362" stroke="var(--c-feature)" stroke-width="2" marker-end="url(#arr)"/>
+      <!-- Merge a develop -->
+      <line x1="390" y1="355" x2="420" y2="289" stroke="var(--c-feature)" stroke-width="1.5" marker-end="url(#arr-g)" opacity="0.9"/>
+
+      <!-- Etiquetas informativas -->
+      <rect x="95" y="382" width="140" height="16" rx="4" fill="rgba(74,222,128,0.1)"/>
+      <text x="165" y="393" fill="var(--c-feature)" font-size="8" text-anchor="middle">feat/login + feat/dashboard</text>
+
+      <rect x="435" y="215" width="85" height="16" rx="4" fill="rgba(251,191,36,0.1)"/>
+      <text x="477" y="226" fill="var(--c-release)" font-size="8" text-anchor="middle">release/1.0</text>
+
+      <rect x="595" y="135" width="80" height="16" rx="4" fill="rgba(251,146,60,0.1)"/>
+      <text x="635" y="146" fill="var(--c-hotfix)" font-size="8" text-anchor="middle">hotfix/crash</text>
+    </svg>
+  </div>
+  <p class="scroll-hint" style="text-align:left; font-size:11px;">— Las líneas punteadas indican bifurcaciones (branch). Las flechas sólidas indican merges.</p>
+</div>
+
+<!-- ============================================================ SLIDE 5: FLUJO PASO A PASO -->
+<div class="slide" id="slide-5">
+  <div class="slide-tag">Flujo de trabajo</div>
+  <h2>El ciclo de vida de un Feature</h2>
+  <div class="cols-2" style="align-items:start;">
+    <div>
+      <ul class="step-list">
+        <li><div class="step-num">1</div><div><strong>Crear la rama</strong><br><span>Desde <code style="color:var(--c-develop)">develop</code> se bifurca <code style="color:var(--c-feature)">feature/mi-feature</code></span></div></li>
+        <li><div class="step-num">2</div><div><strong>Desarrollar</strong><br><span>Commits en la rama del feature. Nadie más se ve afectado.</span></div></li>
+        <li><div class="step-num">3</div><div><strong>Pull Request / Code Review</strong><br><span>Se solicita revisión antes de mergear (buena práctica).</span></div></li>
+        <li><div class="step-num">4</div><div><strong>Merge a develop</strong><br><span>Con <code>--no-ff</code> para preservar el historial. Se elimina la rama.</span></div></li>
+        <li><div class="step-num">5</div><div><strong>Release</strong><br><span>Cuando hay suficientes features, se abre <code style="color:var(--c-release)">release/X.Y</code> desde develop.</span></div></li>
+        <li><div class="step-num">6</div><div><strong>Cierre del release</strong><br><span>Merge a <code style="color:var(--c-main)">main</code> con tag de versión, y back-merge a <code style="color:var(--c-develop)">develop</code>.</span></div></li>
+      </ul>
+    </div>
+    <div class="terminal" style="max-height:320px;">
+      <div class="terminal-bar">
+        <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+        <span class="terminal-title">ciclo-feature.sh</span>
+      </div>
+      <div class="terminal-body">
+        <div><span class="t-step">## PASO 1: Iniciar feature desde develop</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git checkout develop</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git checkout -b feature/login</span></div>
+        <div><span class="t-out">Switched to a new branch 'feature/login'</span></div>
+        <br>
+        <div><span class="t-step">## PASO 2: Desarrollar y commitear</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git add . && git commit -m "feat: add login form"</span></div>
+        <div><span class="t-out">[feature/login abc1234] feat: add login form</span></div>
+        <br>
+        <div><span class="t-step">## PASO 4: Merge a develop (--no-ff)</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git checkout develop</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git merge --no-ff feature/login -m "merge: feature/login"</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git branch -d feature/login</span></div>
+        <div><span class="t-ok">✓ Rama eliminada correctamente</span></div>
+        <br>
+        <div><span class="t-step">## PASO 5: Abrir release</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git checkout -b release/1.0 develop</span></div>
+        <div><span class="t-step">## PASO 6: Cerrar release</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git checkout main && git merge --no-ff release/1.0</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git tag -a v1.0 -m "Release 1.0"</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git checkout develop && git merge --no-ff release/1.0</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ SLIDE 6: HOTFIX DAG -->
+<div class="slide" id="slide-6">
+  <div class="slide-tag">Casos especiales</div>
+  <h2>Hotfix: bug urgente en producción</h2>
+  <div class="cols-2" style="align-items:start; gap:40px;">
+    <div>
+      <p style="margin-bottom:20px; font-size:14px; color:var(--text);">El hotfix es el único flujo que <strong style="color:var(--orange)">sale directamente de <code>main</code></strong>. Permite corregir un bug crítico sin esperar el próximo release, y sin mezclar features incompletos.</p>
+      <div class="card" style="border-color:var(--c-hotfix); margin-bottom:16px;">
+        <h3>Regla del hotfix</h3>
+        <p style="font-size:13px;">Al terminar, se mergea a <strong style="color:var(--text)">main</strong> (con tag) <em>y también</em> a <strong style="color:var(--text)">develop</strong>. Esto garantiza que el fix no se pierda en el próximo release.</p>
+      </div>
+      <div class="code-block" style="font-size:12px; line-height:2;">
+        <div><span class="cmt"># Desde main, crear hotfix</span></div>
+        <div><span class="cmd">git checkout -b hotfix/crash-login main</span></div>
+        <div><span class="cmt"># ... corregir el bug ...</span></div>
+        <div><span class="cmd">git commit -m "fix: null pointer in auth"</span></div>
+        <br>
+        <div><span class="cmt"># Mergear a main y tagear</span></div>
+        <div><span class="cmd">git checkout main</span></div>
+        <div><span class="cmd">git merge --no-ff hotfix/crash-login</span></div>
+        <div><span class="cmd">git tag -a v1.0.1 -m "Hotfix: crash login"</span></div>
+        <br>
+        <div><span class="cmt"># CRUCIAL: también a develop</span></div>
+        <div><span class="cmd">git checkout develop</span></div>
+        <div><span class="cmd">git merge --no-ff hotfix/crash-login</span></div>
+        <div><span class="ok">✓ Fix propagado en ambas ramas</span></div>
+      </div>
+    </div>
+    <div class="dag-container" style="flex:1; min-height:220px;">
+      <svg viewBox="0 0 420 260" width="100%" style="max-height:240px;">
+        <defs>
+          <marker id="a2" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#64748b"/>
+          </marker>
+          <marker id="a2o" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--c-hotfix)"/>
+          </marker>
+        </defs>
+
+        <text x="10" y="45"  fill="var(--c-main)"    font-size="10" font-weight="700">main</text>
+        <text x="10" y="140" fill="var(--c-hotfix)"  font-size="10" font-weight="700">hotfix</text>
+        <text x="10" y="225" fill="var(--c-develop)" font-size="10" font-weight="700">develop</text>
+
+        <!-- main commits -->
+        <circle cx="80"  cy="42" r="8" fill="var(--c-main)"/>
+        <text x="70" y="30" fill="var(--text)" font-size="8">v1.0</text>
+        <circle cx="320" cy="42" r="8" fill="var(--c-main)"/>
+        <text x="308" y="30" fill="var(--text)" font-size="8">v1.0.1</text>
+
+        <line x1="88"  y1="42" x2="312" y2="42" stroke="var(--c-main)" stroke-width="2.5" marker-end="url(#a2)"/>
+        <line x1="328" y1="42" x2="410" y2="42" stroke="var(--c-main)" stroke-width="2.5" marker-end="url(#a2)"/>
+
+        <!-- hotfix commits -->
+        <circle cx="150" cy="136" r="7" fill="var(--c-hotfix)"/>
+        <circle cx="240" cy="136" r="7" fill="var(--c-hotfix)"/>
+
+        <line x1="88"  y1="48" x2="143" y2="130" stroke="var(--c-hotfix)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.8"/>
+        <line x1="157" y1="136" x2="233" y2="136" stroke="var(--c-hotfix)" stroke-width="2" marker-end="url(#a2)"/>
+        <!-- merge a main -->
+        <line x1="245" y1="129" x2="313" y2="50" stroke="var(--c-hotfix)" stroke-width="1.5" marker-end="url(#a2o)"/>
+        <!-- merge a develop -->
+        <line x1="243" y1="143" x2="310" y2="216" stroke="var(--c-hotfix)" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#a2o)" opacity="0.8"/>
+
+        <!-- develop -->
+        <circle cx="80"  cy="222" r="7" fill="var(--c-develop)"/>
+        <circle cx="320" cy="222" r="7" fill="var(--c-develop)"/>
+
+        <line x1="87"  cy="42" x2="87" y1="222" x2="87" y2="222" />
+        <line x1="88" y1="48" x2="81" y2="216" stroke="var(--c-develop)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.5"/>
+        <line x1="87" y1="222" x2="313" y2="222" stroke="var(--c-develop)" stroke-width="2" marker-end="url(#a2)"/>
+        <line x1="327" y1="222" x2="410" y2="222" stroke="var(--c-develop)" stroke-width="2" marker-end="url(#a2)"/>
+
+        <rect x="130" y="152" width="110" height="14" rx="3" fill="rgba(251,146,60,0.1)"/>
+        <text x="185" y="162" fill="var(--c-hotfix)" font-size="8" text-anchor="middle">hotfix/crash-login</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ SLIDE 7: PROS Y CONS -->
+<div class="slide" id="slide-7">
+  <div class="slide-tag">Evaluación</div>
+  <h2>Ventajas y desventajas</h2>
+  <div class="cols-2" style="align-items:start;">
+    <div>
+      <h3 style="color:var(--green); margin-bottom:16px;">✓ Ventajas</h3>
+      <div class="pro">Separa claramente el código de <strong>producción</strong> del de desarrollo.</div>
+      <div class="pro">Soporta múltiples <strong>versiones en paralelo</strong> (ej: v1 y v2 simultáneas).</div>
+      <div class="pro">Los hotfixes no interfieren con features en desarrollo.</div>
+      <div class="pro">El historial de Git queda <strong>muy explícito</strong> sobre qué cambio y cuándo.</div>
+      <div class="pro">Ideal para proyectos con <strong>releases planificados</strong> y equipos grandes.</div>
+      <div class="pro">Integra bien con CI/CD al tener puntos de integración claros.</div>
+    </div>
+    <div>
+      <h3 style="color:var(--red); margin-bottom:16px;">✗ Desventajas</h3>
+      <div class="con"><strong>Overhead alto</strong>: muchas ramas y merges pueden ser pesados para equipos chicos.</div>
+      <div class="con">En proyectos con <strong>despliegue continuo</strong> (CD) puede sentirse excesivo.</div>
+      <div class="con">Curva de aprendizaje para quienes vienen de flujos más simples.</div>
+      <div class="con">El historial con <code>--no-ff</code> puede ser <strong>verboso</strong> en repos muy activos.</div>
+      <div class="con">Para proyectos con un solo developer o prototipos, es sobrediseñado.</div>
+      <div class="card" style="margin-top:16px; border-color:var(--accent2);">
+        <h3>¿Cuándo NO usar GitFlow?</h3>
+        <p style="font-size:13px;">Si el equipo hace <strong style="color:var(--text)">deploys múltiples veces por día</strong>, considerar <em>GitHub Flow</em> o <em>Trunk-Based Development</em>, que son más livianos.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ SLIDE 8: DEMO CONSOLA -->
+<div class="slide" id="slide-8">
+  <div class="slide-tag">Demostración práctica</div>
+  <h2>Demo: repo desde cero con GitFlow</h2>
+  <div class="cols-2" style="align-items:start; height:calc(100% - 100px);">
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <p style="font-size:13px; color:var(--text);">Pasos para ejecutar en tu terminal. Simula un proyecto real con feature, release y hotfix.</p>
+      <ul class="step-list" style="font-size:12px;">
+        <li><div class="step-num">1</div><div><strong>Init y main</strong><br><span>Crear repo, primer commit en main.</span></div></li>
+        <li><div class="step-num">2</div><div><strong>Rama develop</strong><br><span>Bifurcar develop desde main.</span></div></li>
+        <li><div class="step-num">3</div><div><strong>Feature</strong><br><span>feat/login desde develop, varios commits.</span></div></li>
+        <li><div class="step-num">4</div><div><strong>Merge feature → develop</strong><br><span>Con --no-ff para historial claro.</span></div></li>
+        <li><div class="step-num">5</div><div><strong>Release 1.0</strong><br><span>Abrir release/1.0, cerrar en main y develop.</span></div></li>
+        <li><div class="step-num">6</div><div><strong>Hotfix</strong><br><span>Bug en producción: hotfix desde main.</span></div></li>
+        <li><div class="step-num">7</div><div><strong>Ver el DAG</strong><br><span><code style="color:var(--accent)">git log --oneline --graph --all</code></span></div></li>
+      </ul>
+    </div>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+        <span class="terminal-title">gitflow-demo.sh — paso a paso</span>
+      </div>
+      <div class="terminal-body" id="demo-body">
+        <div><span class="t-step">## 1. INICIALIZAR EL REPO</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">mkdir proyecto-demo && cd proyecto-demo</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git init && echo "# App" > README.md</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git add . && git commit -m "chore: init repo"</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git branch -M main</span></div>
+        <br>
+        <div><span class="t-step">## 2. CREAR RAMA DEVELOP</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git checkout -b develop</span></div>
+        <div><span class="t-out">Switched to a new branch 'develop'</span></div>
+        <br>
+        <div><span class="t-step">## 3. FEATURE: login</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git checkout -b feature/login develop</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">echo "login()" > auth.py && git add . && git commit -m "feat: add login"</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">echo "logout()" >> auth.py && git commit -am "feat: add logout"</span></div>
+        <br>
+        <div><span class="t-step">## 4. MERGE FEATURE → DEVELOP</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git checkout develop</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git merge --no-ff feature/login -m "merge: feature/login → develop"</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git branch -d feature/login</span></div>
+        <br>
+        <div><span class="t-step">## 5. RELEASE 1.0</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git checkout -b release/1.0 develop</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">echo "1.0.0" > VERSION && git add . && git commit -m "chore: bump version 1.0.0"</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git checkout main && git merge --no-ff release/1.0 -m "release: v1.0"</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git tag -a v1.0 -m "Release 1.0"</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git checkout develop && git merge --no-ff release/1.0 -m "back-merge: release/1.0"</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git branch -d release/1.0</span></div>
+        <br>
+        <div><span class="t-step">## 6. HOTFIX: bug en producción</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git checkout -b hotfix/null-crash main</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">echo "fix: check null" >> auth.py && git commit -am "fix: null crash on login"</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git checkout main && git merge --no-ff hotfix/null-crash -m "hotfix: null-crash"</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git tag -a v1.0.1 -m "Hotfix: null crash"</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git checkout develop && git merge --no-ff hotfix/null-crash</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git branch -d hotfix/null-crash</span></div>
+        <br>
+        <div><span class="t-step">## 7. VER EL GRAFO FINAL</span></div>
+        <div><span class="t-prompt">$</span> <span class="t-cmd">git log --oneline --graph --all --decorate</span></div>
+        <div><span class="t-out">*   abc1234 (HEAD -> develop) merge: hotfix/null-crash</span></div>
+        <div><span class="t-out">|\</span></div>
+        <div><span class="t-out">| * def5678 (tag: v1.0.1, main) hotfix: null-crash</span></div>
+        <div><span class="t-out">|/</span></div>
+        <div><span class="t-out">*   ghi9012 back-merge: release/1.0</span></div>
+        <div><span class="t-out">*   jkl3456 (tag: v1.0) release: v1.0</span></div>
+        <div><span class="t-out">*   mno7890 merge: feature/login → develop</span></div>
+        <div><span class="t-out">*   pqr1234 chore: init repo</span></div>
+        <div><span class="t-ok">✓ Historial explícito y trazable</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ SLIDE 9: COMPARACIÓN -->
+<div class="slide" id="slide-9">
+  <div class="slide-tag">Contexto</div>
+  <h2>GitFlow vs otros modelos</h2>
+  <div style="flex:1; overflow-y:auto;">
+    <table style="width:100%; border-collapse:collapse; font-size:13px;">
+      <thead>
+        <tr>
+          <th style="text-align:left; padding:12px 16px; border-bottom:1px solid var(--border); color:var(--muted); font-weight:600; letter-spacing:0.1em; font-size:11px;">MODELO</th>
+          <th style="text-align:left; padding:12px 16px; border-bottom:1px solid var(--border); color:var(--muted); font-weight:600; letter-spacing:0.1em; font-size:11px;">RAMAS PRINCIPALES</th>
+          <th style="text-align:left; padding:12px 16px; border-bottom:1px solid var(--border); color:var(--muted); font-weight:600; letter-spacing:0.1em; font-size:11px;">IDEAL PARA</th>
+          <th style="text-align:left; padding:12px 16px; border-bottom:1px solid var(--border); color:var(--muted); font-weight:600; letter-spacing:0.1em; font-size:11px;">COMPLEJIDAD</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:14px 16px;"><strong style="color:var(--accent)">GitFlow</strong></td>
+          <td style="padding:14px 16px; color:var(--muted);">main, develop, feature, release, hotfix</td>
+          <td style="padding:14px 16px; color:var(--muted);">Releases planificados, equipos medianos/grandes</td>
+          <td style="padding:14px 16px;"><span style="color:var(--red)">●●●</span> Alta</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border); background:rgba(255,255,255,0.01);">
+          <td style="padding:14px 16px;"><strong style="color:var(--green)">GitHub Flow</strong></td>
+          <td style="padding:14px 16px; color:var(--muted);">main + feature branches + PR</td>
+          <td style="padding:14px 16px; color:var(--muted);">CD/despliegue continuo, equipos ágiles</td>
+          <td style="padding:14px 16px;"><span style="color:var(--green)">●</span><span style="color:var(--border)">●●</span> Baja</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:14px 16px;"><strong style="color:var(--purple)">Trunk-Based</strong></td>
+          <td style="padding:14px 16px; color:var(--muted);">main (trunk) + short-lived branches</td>
+          <td style="padding:14px 16px; color:var(--muted);">Alta frecuencia de deploy, feature flags</td>
+          <td style="padding:14px 16px;"><span style="color:var(--yellow)">●●</span><span style="color:var(--border)">●</span> Media</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border); background:rgba(255,255,255,0.01);">
+          <td style="padding:14px 16px;"><strong style="color:var(--yellow)">GitLab Flow</strong></td>
+          <td style="padding:14px 16px; color:var(--muted);">main + feature + environment branches</td>
+          <td style="padding:14px 16px; color:var(--muted);">Múltiples ambientes (dev, staging, prod)</td>
+          <td style="padding:14px 16px;"><span style="color:var(--yellow)">●●</span><span style="color:var(--border)">●</span> Media</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="card" style="margin-top:20px; display:flex; gap:24px; align-items:center;">
+      <div style="flex:1;">
+        <h3>Conclusión clave</h3>
+        <p style="font-size:13px; margin-top:8px;">No existe el modelo "mejor". GitFlow brilla cuando la empresa hace <strong style="color:var(--text)">versiones numeradas</strong> (ej: app móvil, librería open-source, software empaquetado). Para SaaS con CI/CD agresivo, GitHub Flow o Trunk-Based son superiores.</p>
+      </div>
+      <div style="font-size:40px; opacity:0.3;">⚖</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ SLIDE 10: CIERRE -->
+<div class="slide" id="slide-10">
+  <div class="grid-bg"></div>
+  <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+    <div class="slide-tag">Resumen</div>
+    <h1 style="font-size:clamp(2rem,4vw,3.2rem); margin-bottom:24px;">Lo que aprendimos</h1>
+    <div class="cols-3" style="gap:16px; flex:initial; margin-bottom:32px;">
+      <div class="card" style="border-color:var(--c-main);">
+        <div style="font-size:24px; margin-bottom:12px;">🌿</div>
+        <strong style="font-size:14px;">5 ramas</strong>
+        <p style="font-size:12px; margin-top:8px;">main, develop, feature, release y hotfix. Cada una con un propósito específico.</p>
+      </div>
+      <div class="card" style="border-color:var(--c-develop);">
+        <div style="font-size:24px; margin-bottom:12px;">📐</div>
+        <strong style="font-size:14px;">Estructura rígida</strong>
+        <p style="font-size:12px; margin-top:8px;">Un modelo con reglas claras que da predecibilidad al equipo y al proceso de release.</p>
+      </div>
+      <div class="card" style="border-color:var(--c-feature);">
+        <div style="font-size:24px; margin-bottom:12px;">⚡</div>
+        <strong style="font-size:14px;">Hotfix seguro</strong>
+        <p style="font-size:12px; margin-top:8px;">Corregir producción sin romper lo que está en desarrollo. El fix se propaga a ambas ramas.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+      <div class="card" style="flex:1; min-width:200px;">
+        <h3>Para explorar más</h3>
+        <p style="font-size:12px; margin-top:8px; line-height:1.8;">
+          <code style="color:var(--accent)">nvie.com/posts/a-successful-git-branching-model</code> — Post original de Vincent Driessen<br>
+          <code style="color:var(--accent)">git-flow</code> — CLI helper para GitFlow<br>
+          <code style="color:var(--accent)">git log --graph --all --oneline</code> — Ver DAG en terminal
+        </p>
+      </div>
+      <div class="card" style="flex:1; min-width:200px; border-color:var(--accent2);">
+        <h3>Comando que más importa</h3>
+        <div class="code-block" style="margin-top:8px; font-size:12px;">
+          <span class="cmd">git merge --no-ff</span><br>
+          <span class="cmt"># Preserva el historial de ramas</span><br>
+          <span class="cmt"># incluso cuando sería fast-forward</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== NAVEGACIÓN ===== -->
+<div id="nav">
+  <button onclick="go(-1)">← Anterior</button>
+  <span id="slide-counter">1 / 10</span>
+  <button onclick="go(1)">Siguiente →</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  let current = 0;
+
+  function go(dir) {
+    slides[current].classList.remove('active');
+    current = (current + dir + total) % total;
+    slides[current].classList.add('active');
+    document.getElementById('slide-counter').textContent = `${current + 1} / ${total}`;
+    document.getElementById('progress-bar').style.width = `${((current + 1) / total) * 100}%`;
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+  });
+
+  // Init progress
+  document.getElementById('progress-bar').style.width = `${(1/total)*100}%`;
+</script>
+</body>
+</html>
