@@ -45,8 +45,9 @@
     display: none;
     position: absolute;
     inset: 0;
-    padding: 48px 64px;
+    padding: clamp(24px, 5vw, 64px);
     animation: fadeIn 0.4s ease;
+    overflow-y: auto;
   }
   .slide.active { display: flex; flex-direction: column; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -67,19 +68,6 @@
     backdrop-filter: blur(12px);
     z-index: 100;
   }
-  #nav button {
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: inherit;
-    font-size: 12px;
-    padding: 6px 16px;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.2s;
-    letter-spacing: 0.05em;
-  }
-  #nav button:hover { background: var(--surface2); border-color: var(--accent); color: var(--accent); }
   #slide-counter { font-size: 11px; color: var(--muted); min-width: 60px; text-align: center; }
   #progress-bar {
     position: fixed; top: 0; left: 0; height: 2px;
@@ -95,20 +83,29 @@
   .slide-tag::before { content: ''; display: block; width: 24px; height: 1px; background: var(--accent); }
   h1 { font-family: 'Fraunces', serif; font-size: clamp(2.4rem, 5vw, 4rem); font-weight: 900; line-height: 1.05; }
   h2 { font-family: 'Fraunces', serif; font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 700; line-height: 1.1; margin-bottom: 24px; }
-  h3 { font-size: 13px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
-  p { font-size: 14px; line-height: 1.8; color: var(--muted); max-width: 700px; }
-  .big-text { font-size: clamp(1rem, 2vw, 1.25rem); color: var(--text); line-height: 1.7; max-width: 750px; }
+  h3 { font-size: clamp(11px, 1.2vw, 13px); letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  p { font-size: clamp(12px, 1.2vw, 14px); line-height: 1.8; color: var(--muted); max-width: 700px; }
+  .big-text { font-size: clamp(13px, 2vw, 1.25rem); color: var(--text); line-height: 1.7; max-width: 750px; }
 
   /* ===== GRID LAYOUTS ===== */
-  .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; flex: 1; }
-  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; flex: 1; }
+  .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(16px, 4vw, 32px); flex: 1; }
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: clamp(12px, 3vw, 20px); flex: 1; }
+
+  @media (max-width: 1024px) {
+    .cols-2 { grid-template-columns: 1fr; }
+    .cols-3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  }
+
+  @media (max-width: 640px) {
+    .cols-3 { grid-template-columns: 1fr; }
+  }
 
   /* ===== CARDS ===== */
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 24px;
+    padding: clamp(12px, 4vw, 24px);
   }
   .card-accent { border-color: var(--accent); }
 
@@ -125,8 +122,8 @@
     background: #050810;
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 20px 24px;
-    font-size: 13px;
+    padding: clamp(12px, 3vw, 24px);
+    font-size: clamp(11px, 1.5vw, 13px);
     line-height: 1.9;
     overflow-y: auto;
   }
@@ -143,19 +140,20 @@
     border-radius: 10px;
     overflow: hidden;
     flex: 1;
+    min-height: 200px;
   }
   .terminal-bar {
     background: var(--surface2);
-    padding: 10px 16px;
+    padding: clamp(8px, 1.5vw, 12px);
     display: flex; align-items: center; gap: 8px;
     border-bottom: 1px solid var(--border);
   }
-  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
   .dot-r { background: #f87171; }
   .dot-y { background: #fbbf24; }
   .dot-g { background: #4ade80; }
-  .terminal-title { font-size: 11px; color: var(--muted); margin-left: 8px; }
-  .terminal-body { padding: 20px 24px; font-size: 12px; line-height: 2; overflow-y: auto; max-height: calc(100% - 40px); }
+  .terminal-title { font-size: clamp(9px, 1vw, 11px); color: var(--muted); margin-left: 8px; }
+  .terminal-body { padding: clamp(12px, 2vw, 24px); font-size: clamp(10px, 1.2vw, 12px); line-height: 1.8; overflow-y: auto; max-height: calc(100% - 40px); }
   .t-prompt { color: var(--green); }
   .t-branch { color: var(--purple); }
   .t-cmd { color: var(--text); }
@@ -180,14 +178,15 @@
   /* ===== STEP LIST ===== */
   .step-list { list-style: none; }
   .step-list li {
-    display: flex; gap: 16px; align-items: flex-start;
-    padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+    display: flex; gap: clamp(8px, 2vw, 16px); align-items: flex-start;
+    padding: clamp(8px, 1.5vw, 12px) 0; border-bottom: 1px solid var(--border); font-size: clamp(11px, 1.1vw, 13px);
   }
   .step-num {
     min-width: 28px; height: 28px; border-radius: 50%;
     background: var(--accent); color: var(--bg);
     display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 700;
+    font-size: clamp(9px, 1vw, 11px); font-weight: 700;
+    flex-shrink: 0;
   }
   .step-list li span { color: var(--muted); }
 
@@ -761,9 +760,7 @@
 
 <!-- ===== NAVEGACIÓN ===== -->
 <div id="nav">
-  <button onclick="go(-1)">← Anterior</button>
   <span id="slide-counter">1 / 10</span>
-  <button onclick="go(1)">Siguiente →</button>
 </div>
 
 <script>
@@ -779,10 +776,39 @@
     document.getElementById('progress-bar').style.width = `${((current + 1) / total) * 100}%`;
   }
 
+  // Navegación por teclado
   document.addEventListener('keydown', e => {
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
     if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
   });
+
+  // Navegación por swipe (mobile)
+  let touchStartX = 0;
+  let touchEndX = 0;
+
+  document.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+  }, false);
+
+  document.addEventListener('touchend', e => {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+  }, false);
+
+  function handleSwipe() {
+    const threshold = 50; // Mínimo de píxeles para detectar swipe
+    const diff = touchStartX - touchEndX;
+
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        // Swipe a la izquierda → siguiente
+        go(1);
+      } else {
+        // Swipe a la derecha → anterior
+        go(-1);
+      }
+    }
+  }
 
   // Init progress
   document.getElementById('progress-bar').style.width = `${(1/total)*100}%`;
